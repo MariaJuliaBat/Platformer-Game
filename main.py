@@ -1,5 +1,5 @@
 import pgzrun
-import sys
+import sys # sys: para poder fechar a aplicação (sys.exit)
 import random
 
 WIDTH = 800
