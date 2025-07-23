@@ -9,7 +9,7 @@ TILE_SIZE = 16
 FONT_NAME = "pixel"
 
 GRAVITY = 0.5
-JUMP_STRENGTH = -10 
+JUMP_STRENGTH = -10
 PLAYER_SPEED = 4
 
 
@@ -86,10 +86,13 @@ class Player(Actor):
         self.on_ground = False
         for p in platforms:
             if self.colliderect(p):
+                # **CORREÇÃO APLICADA AQUI**
+                # Revertido para a lógica de colisão simples e funcional.
                 if self.vy > 0:
                     self.bottom = p.top
                     self.vy = 0
                     self.on_ground = True
+                # Colisão vertical (batendo a cabeça na plataforma)
                 elif self.vy < 0:
                     self.top = p.bottom
                     self.vy = 0
@@ -109,8 +112,12 @@ class Enemy(Actor):
 
     def update(self):
         self.x += self.speed
-        if self.x > self.start_x + self.patrol_range or self.x < self.start_x - self.patrol_range:
+        if abs(self.x - self.start_x) > self.patrol_range:
             self.speed *= -1
+            if self.x > self.start_x:
+                self.x = self.start_x + self.patrol_range
+            else:
+                self.x = self.start_x - self.patrol_range
 
         self.timer += 1
         if self.timer > 10:
@@ -145,12 +152,14 @@ class Game:
     def restart_game(self):
         self.game_state = STATE_MENU
         self.score = 0
-        self.sound_on = True
+        self.effects_on = True 
+        self.music_on = True   
         
         self.buttons = {
-            "start": Button("Start Game", (WIDTH / 2, 250)),
-            "sound": Button("Sound: ON", (WIDTH / 2, 320)),
-            "exit": Button("Exit", (WIDTH / 2, 390))
+            "start": Button("Start Game", (WIDTH / 2, 220)),
+            "effects": Button("Effects: ON", (WIDTH / 2, 290)),
+            "music": Button("Music: ON", (WIDTH / 2, 360)),
+            "exit": Button("Exit", (WIDTH / 2, 430))
         }
         
         self.platforms = []
@@ -193,9 +202,12 @@ class Game:
         if self.game_state == STATE_MENU:
             if self.buttons["start"].is_clicked(pos):
                 self.game_state = STATE_PLAYING
-            elif self.buttons["sound"].is_clicked(pos):
-                self.sound_on = not self.sound_on
-                self.buttons["sound"].text = f"Sound: {'ON' if self.sound_on else 'OFF'}"
+            elif self.buttons["effects"].is_clicked(pos):
+                self.effects_on = not self.effects_on
+                self.buttons["effects"].text = f"Effects: {'ON' if self.effects_on else 'OFF'}"
+            elif self.buttons["music"].is_clicked(pos):
+                self.music_on = not self.music_on
+                self.buttons["music"].text = f"Music: {'ON' if self.music_on else 'OFF'}"
                 self.toggle_music()
             elif self.buttons["exit"].is_clicked(pos):
                 sys.exit()
@@ -235,10 +247,11 @@ class Game:
                     self.score += 1
                     self.player.vy = JUMP_STRENGTH * 0.5
                     self.play_sound('enemy_hit')
-                    if not self.enemies:
-                        self.trigger_victory()
                 else:
                     self.trigger_game_over()
+        
+        if not self.enemies and self.game_state == STATE_PLAYING:
+            self.trigger_victory()
         
         if self.player.top > HEIGHT: self.trigger_game_over()
 
@@ -254,20 +267,21 @@ class Game:
         screen.draw.text("Press any key to restart", center=(WIDTH / 2, HEIGHT / 2 + 80), fontname=FONT_NAME, fontsize=24, color="white")
 
     def trigger_game_over(self):
-        self.game_state = STATE_GAME_OVER
-        self.play_sound('game_over')
+        if self.game_state == STATE_PLAYING:
+            self.game_state = STATE_GAME_OVER
+            self.play_sound('game_over')
 
     def trigger_victory(self):
         self.game_state = STATE_VICTORY
         self.play_sound('victory')
 
     def play_sound(self, name):
-        if self.sound_on:
+        if self.effects_on:
             sound = getattr(sounds, name)
             sound.play()
 
     def toggle_music(self):
-        if self.sound_on:
+        if self.music_on:
             music.play('background_music')
         else:
             music.stop()
